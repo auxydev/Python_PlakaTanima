@@ -13,7 +13,7 @@ from plakatanima.config import CameraRole
 from plakatanima.context import AppContext
 from plakatanima.core.formatting import format_money
 from plakatanima.core.plate import format_plate
-from plakatanima.db.models import EventAction, PaymentMethod, SessionStatus
+from plakatanima.db.models import EventAction, PaymentMethod, SessionStatus, User, UserRole
 from plakatanima.gui.bridge import CameraBridge
 from plakatanima.gui.dialogs import ManualPassDialog, PaymentDialog, SessionDetailDialog
 from plakatanima.gui.utils import confirm, show_error
@@ -45,7 +45,12 @@ class Controller(QObject):
         )
         self.window: QWidget | None = None
         self.toasts: ToastManager | None = None
-        self.current_user = None
+        self.current_user: User | None = None
+
+    @property
+    def is_admin(self) -> bool:
+        """Giriş kapalıysa (tek kullanıcılı kurulum) tüm yetkiler açıktır."""
+        return self.current_user is None or self.current_user.role is UserRole.ADMIN
 
     @property
     def currency(self) -> str:
@@ -183,6 +188,7 @@ class Controller(QObject):
             self.ctx.paths.captures_dir,
             self.currency,
             current_fee=current,
+            can_delete=self.is_admin,
             parent=self.window,
         )
         if not dialog.exec():

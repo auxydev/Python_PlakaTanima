@@ -55,12 +55,13 @@ _ICONS = {
     VehicleType.UNKNOWN: "mdi6.help-circle-outline",
 }
 
+# Renk körlüğüne karşı doğrulanmış kategorik paletten (koyu yüzey adımları), sabit sırayla.
 _COLORS = {
-    VehicleType.CAR: "#4C9AFF",
-    VehicleType.MOTORCYCLE: "#FFAB00",
-    VehicleType.LIGHT_COMMERCIAL: "#36B37E",
-    VehicleType.TRUCK: "#FF5630",
-    VehicleType.BUS: "#6554C0",
+    VehicleType.CAR: "#3987e5",
+    VehicleType.MOTORCYCLE: "#d95926",
+    VehicleType.LIGHT_COMMERCIAL: "#199e70",
+    VehicleType.TRUCK: "#c98500",
+    VehicleType.BUS: "#d55181",
     VehicleType.UNKNOWN: "#8993A4",
 }
 

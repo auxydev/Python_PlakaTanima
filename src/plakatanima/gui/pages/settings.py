@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import threading
+from pathlib import Path
 
 from pydantic import ValidationError
-from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import QObject, Qt, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -25,6 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from plakatanima.camera.snapshot import cleanup_snapshots
 from plakatanima.camera.source import OpenCVSource, SourceError, describe_source
 from plakatanima.config import AppConfig, CameraConfig, CameraRole
 from plakatanima.gui import theme
@@ -42,6 +44,12 @@ from plakatanima.gui.utils import (
     show_error,
 )
 from plakatanima.recognition.model_store import YOLOX_MODELS
+from plakatanima.services.maintenance import (
+    DEFAULT_KEEP,
+    BackupError,
+    backup_database,
+    list_backups,
+)
 
 PLATE_DETECTORS = (
     "yolo-v9-t-384-license-plate-end2end",
@@ -70,6 +78,11 @@ def _dspin(minimum: float, maximum: float, step: float, decimals: int = 2) -> QD
     box.setSingleStep(step)
     box.setDecimals(decimals)
     return box
+
+
+def _open_folder(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
 
 
 def _scroll(widget: QWidget) -> QScrollArea:
@@ -244,6 +257,9 @@ class SettingsPage(QWidget):
         self.tabs.addTab(_scroll(self._general_tab()), icon("mdi6.tune"), "Genel")
         self.tabs.addTab(self._cameras_tab(), icon("mdi6.cctv"), "Kameralar")
         self.tabs.addTab(_scroll(self._recognition_tab()), icon("mdi6.eye-outline"), "Tanıma")
+        self.tabs.addTab(
+            _scroll(self._maintenance_tab()), icon("mdi6.database-cog-outline"), "Bakım"
+        )
         root.addWidget(self.tabs, 1)
         self.load()
 
@@ -457,6 +473,105 @@ class SettingsPage(QWidget):
         layout.addStretch(1)
         return page
 
+    # ---------------------------------------------------------------- bakım
+    def _maintenance_tab(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        card = Card()
+        card.body.addWidget(section_title("Veritabanı yedekleri"))
+        card.body.addWidget(
+            muted(
+                "Uygulama her açılışta, son yedek bir günden eskiyse otomatik yedek alır. "
+                f"En son {DEFAULT_KEEP} yedek saklanır."
+            )
+        )
+        self.backup_list = QListWidget()
+        self.backup_list.setMaximumHeight(170)
+        card.body.addWidget(self.backup_list)
+        row = QHBoxLayout()
+        backup_now = button("Şimdi Yedekle", "mdi6.database-export-outline", variant="primary")
+        backup_now.clicked.connect(self._backup_now)
+        row.addWidget(backup_now)
+        open_backups = button("Klasörü Aç", "mdi6.folder-open-outline")
+        open_backups.clicked.connect(lambda: _open_folder(self.ctx.paths.backups_dir))
+        row.addWidget(open_backups)
+        row.addStretch(1)
+        card.body.addLayout(row)
+        layout.addWidget(card)
+
+        card = Card()
+        card.body.addWidget(section_title("Anlık görüntüler"))
+        self.captures_info = muted("")
+        card.body.addWidget(self.captures_info)
+        row = QHBoxLayout()
+        clean = button("Eski Görüntüleri Temizle", "mdi6.broom")
+        clean.clicked.connect(self._clean_snapshots)
+        row.addWidget(clean)
+        open_captures = button("Klasörü Aç", "mdi6.folder-open-outline")
+        open_captures.clicked.connect(lambda: _open_folder(self.ctx.paths.captures_dir))
+        row.addWidget(open_captures)
+        row.addStretch(1)
+        card.body.addLayout(row)
+        layout.addWidget(card)
+
+        card = Card()
+        card.body.addWidget(section_title("Dosya konumları"))
+        form = QFormLayout()
+        db_url = self.ctx.db.engine.url.render_as_string(hide_password=True)
+        for label, value in (
+            ("Ayar dosyası", str(self.ctx.config_path)),
+            ("Veri dizini", str(self.ctx.paths.data_dir)),
+            ("Veritabanı", db_url),
+            ("Modeller", str(self.ctx.paths.models_dir)),
+            ("Loglar", str(self.ctx.paths.logs_dir)),
+        ):
+            text = QLabel(value)
+            text.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            text.setWordWrap(True)
+            form.addRow(label, text)
+        card.body.addLayout(form)
+        open_data = button("Veri Dizinini Aç", "mdi6.folder-open-outline")
+        open_data.clicked.connect(lambda: _open_folder(self.ctx.paths.data_dir))
+        card.body.addWidget(open_data, 0, Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(card)
+        layout.addStretch(1)
+        return page
+
+    def _refresh_maintenance(self) -> None:
+        self.backup_list.clear()
+        for info in list_backups(self.ctx.paths.backups_dir):
+            self.backup_list.addItem(
+                QListWidgetItem(
+                    icon("mdi6.database-outline"),
+                    f"{info.created:%d.%m.%Y %H:%M}   ·   {info.size / 1_048_576:.1f} MB   ·   "
+                    f"{info.path.name}",
+                )
+            )
+        if not self.backup_list.count():
+            self.backup_list.addItem("Henüz yedek yok")
+        files = list(self.ctx.paths.captures_dir.rglob("*.jpg"))
+        size = sum(f.stat().st_size for f in files) / 1_048_576
+        days = self.ctx.config.parking.snapshot_retention_days
+        self.captures_info.setText(
+            f"{len(files)} görüntü, {size:.1f} MB · {days} günden eski görüntüler otomatik silinir."
+        )
+
+    def _backup_now(self) -> None:
+        try:
+            path = backup_database(self.ctx.db, self.ctx.paths.backups_dir)
+        except (BackupError, OSError) as exc:
+            show_error(self, str(exc))
+            return
+        self.controller.toast("Yedek alındı", path.name, "success")
+        self._refresh_maintenance()
+
+    def _clean_snapshots(self) -> None:
+        days = self.ctx.config.parking.snapshot_retention_days
+        removed = cleanup_snapshots(self.ctx.paths.captures_dir, days)
+        self.controller.toast("Temizlik tamamlandı", f"{removed} görüntü silindi", "success")
+        self._refresh_maintenance()
+
     def _browse_model(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
             self, "Model dosyası", "", "Modeller (*.onnx *.pt);;Tüm dosyalar (*)"
@@ -491,6 +606,7 @@ class SettingsPage(QWidget):
         self.cooldown.setValue(rec.cooldown_seconds)
         self.device.setCurrentIndex(self.device.findData(rec.device))
 
+        self._refresh_maintenance()
         self._cameras = [c.model_copy() for c in cfg.cameras]
         self._current_row = -1
         self._refresh_camera_list()

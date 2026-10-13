@@ -362,6 +362,7 @@ class SessionDetailDialog(QDialog):
         currency: str,
         *,
         current_fee: Decimal | None = None,
+        can_delete: bool = True,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -436,9 +437,10 @@ class SessionDetailDialog(QDialog):
             pay = button("Ödeme Al", "mdi6.cash-register", variant="success")
             pay.clicked.connect(lambda: self._finish("pay"))
             actions.addWidget(pay)
-        delete = button("Sil", "mdi6.delete-outline", variant="danger")
-        delete.clicked.connect(lambda: self._finish("delete"))
-        actions.addWidget(delete)
+        if can_delete:
+            delete = button("Sil", "mdi6.delete-outline", variant="danger")
+            delete.clicked.connect(lambda: self._finish("delete"))
+            actions.addWidget(delete)
         close = QPushButton("Kapat")
         close.clicked.connect(self.reject)
         actions.addWidget(close)

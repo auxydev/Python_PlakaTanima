@@ -49,6 +49,7 @@ class VehiclesPage(QWidget):
         edit.clicked.connect(self._edit_selected)
         delete = button("Sil", "mdi6.delete-outline", variant="danger")
         delete.clicked.connect(self._delete_selected)
+        delete.setVisible(controller.is_admin)
         root.addWidget(
             page_header(
                 "Araçlar",

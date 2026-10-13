@@ -53,7 +53,9 @@ def test_all_pages_open(window):
         "inside",
         "sessions",
         "vehicles",
+        "reports",
         "tariffs",
+        "users",
         "settings",
     }
 
@@ -236,3 +238,78 @@ def test_data_table_sorting(qtbot):
     model.columns[1].text = lambda r: str(r["n"])
     table.sortByColumn(1, __import__("PySide6.QtCore").QtCore.Qt.SortOrder.AscendingOrder)
     assert [table.row_for_index(table.proxy.index(i, 0))["n"] for i in range(3)] == [1, 3, 10]
+
+
+def test_operator_sees_no_admin_pages(qtbot, ctx):
+    operator = ctx.users.create("op", "1234")
+    win = build_window(ctx, user=operator, start_cameras=False)
+    qtbot.addWidget(win)
+    assert not win.controller.is_admin
+    assert "settings" not in win.pages and "users" not in win.pages
+    assert "tariffs" not in win.pages and "reports" in win.pages
+    win.controller.shutdown()
+
+
+def test_reports_page_and_export(window, ctx, tmp_path, monkeypatch):
+    from plakatanima.gui.pages import reports as reports_module
+
+    ctx.parking.process(
+        PlateObservation(
+            "34ABC123", vehicle_type=VehicleType.CAR, timestamp=datetime.now() - timedelta(hours=1)
+        )
+    )
+    ctx.parking.process(PlateObservation("34ABC123", role=CameraRole.EXIT))
+    page = window.pages["reports"]
+    page.reload()
+    assert page.summary.entries == 1
+    assert page.kpi_entries.value.text() == "1"
+    assert page.type_chart._items[0].label == "Otomobil"
+    target = tmp_path / "rapor"
+    monkeypatch.setattr(
+        reports_module.QFileDialog, "getSaveFileName", lambda *a, **k: (str(target), "")
+    )
+    page.export("xlsx")
+    assert (tmp_path / "rapor.xlsx").is_file()
+    page.export("csv")
+    assert (tmp_path / "rapor.csv").is_file()
+    page.grab()  # grafikler çizilebiliyor
+
+
+def test_login_and_password_dialogs(qtbot, ctx):
+    from plakatanima.gui.auth_dialogs import ChangePasswordDialog, LoginDialog, UserDialog
+
+    dialog = LoginDialog(ctx.users, "Otopark")
+    qtbot.addWidget(dialog)
+    assert dialog.username.text() == "admin"  # ilk kurulum ipucu
+    dialog.password.setText("yanlis")
+    dialog._login()
+    assert dialog.user is None and "hatalı" in dialog.error.text()
+    dialog.password.setText("admin")
+    dialog._login()
+    assert dialog.user is not None and dialog.user.must_change_password
+
+    change = ChangePasswordDialog(ctx.users, dialog.user, forced=True)
+    qtbot.addWidget(change)
+    change.old.setText("admin")
+    change.new.setText("yeni1234")
+    change.repeat.setText("farkli")
+    change._save()
+    assert "eşleşmiyor" in change.error.text()
+    change.repeat.setText("yeni1234")
+    change._save()
+    assert ctx.users.authenticate("admin", "yeni1234") is not None
+
+    create = UserDialog(ctx.users)
+    qtbot.addWidget(create)
+    create.username.setText("kasiyer")
+    create.password.setText("1234")
+    create.repeat.setText("1234")
+    create._save()
+    assert ctx.users.get("kasiyer").role.value == "operator"
+
+
+def test_settings_backup_button(window, ctx):
+    page = window.pages["settings"]
+    page._backup_now()  # dosya tabanlı SQLite: yedek alınır
+    assert any(ctx.paths.backups_dir.glob("*.db"))
+    assert "MB" in page.backup_list.item(0).text()

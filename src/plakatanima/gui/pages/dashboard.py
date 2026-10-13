@@ -15,6 +15,7 @@ from plakatanima.gui.controller import Controller
 from plakatanima.gui.utils import Card, button, muted, page_header, section_title
 from plakatanima.gui.widgets.camera_view import CameraView
 from plakatanima.gui.widgets.cards import OccupancyCard, StatCard
+from plakatanima.gui.widgets.charts import ColumnChart, Series, entry_color, exit_color
 from plakatanima.gui.widgets.event_feed import EventFeed, FeedEntry
 from plakatanima.services.parking import ParkingResult
 
@@ -71,13 +72,28 @@ class DashboardPage(QWidget):
 
         body = QHBoxLayout()
         body.setSpacing(16)
+        self.left = QWidget()
+        left_layout = QVBoxLayout(self.left)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(self.SPACING)
         self.camera_area = QWidget()
         self.camera_grid = QGridLayout(self.camera_area)
         self.camera_grid.setContentsMargins(0, 0, 0, 0)
-        self.camera_grid.setSpacing(14)
+        self.camera_grid.setSpacing(self.SPACING)
+        left_layout.addWidget(self.camera_area)
+
+        traffic = Card(padding=14)
+        head = QHBoxLayout()
+        head.addWidget(section_title("Bugünün Trafiği"))
+        head.addStretch(1)
+        head.addWidget(muted("saatlik giriş / çıkış"))
+        traffic.body.addLayout(head)
+        self.traffic_chart = ColumnChart(empty_text="Bugün henüz geçiş yok")
+        traffic.body.addWidget(self.traffic_chart, 1)
+        left_layout.addWidget(traffic, 1)
         self._columns = 0
-        self.camera_area.installEventFilter(self)
-        body.addWidget(self.camera_area, 7)
+        self.left.installEventFilter(self)
+        body.addWidget(self.left, 7)
 
         feed_card = Card(padding=12)
         head = QHBoxLayout()
@@ -139,12 +155,15 @@ class DashboardPage(QWidget):
         self._arrange_cameras()
 
     _CHROME = 92  # kamera kartının başlık + plaka şeridi yüksekliği (px)
+    CHART_MIN = 210  # trafik grafiğine bırakılan en az yükseklik (px)
+    SPACING = 14
 
     def _cell_size(self, count: int, columns: int) -> tuple[float, float]:
-        spacing = self.camera_grid.spacing()
+        spacing = self.SPACING
         rows = math.ceil(count / columns)
-        cell_w = (max(self.camera_area.width(), 1) - spacing * (columns - 1)) / columns
-        cell_h = (max(self.camera_area.height(), 1) - spacing * (rows - 1)) / rows
+        available_h = max(self.left.height() - self.CHART_MIN - spacing, 200)
+        cell_w = (max(self.left.width(), 1) - spacing * (columns - 1)) / columns
+        cell_h = (available_h - spacing * (rows - 1)) / rows
         return cell_w, cell_h
 
     def _best_columns(self, count: int) -> int:
@@ -163,9 +182,11 @@ class DashboardPage(QWidget):
         columns = self._best_columns(len(views))
         # Kart yüksekliği görüntü oranına göre: kart içinde boş siyah alan kalmasın.
         cell_w, cell_h = self._cell_size(len(views), columns)
-        height = int(min(cell_h, cell_w * 9 / 16 + self._CHROME))
+        height = max(int(min(cell_h, cell_w * 9 / 16 + self._CHROME)), 200)
         for view in views:
-            view.setFixedHeight(max(height, 200))
+            view.setFixedHeight(height)
+        rows = math.ceil(len(views) / columns)
+        self.camera_area.setFixedHeight(rows * height + self.SPACING * (rows - 1))
         if columns == self._columns:
             return
         self._columns = columns
@@ -177,13 +198,11 @@ class DashboardPage(QWidget):
             self.camera_grid.setColumnStretch(c, 0)
         for n, view in enumerate(views):
             self.camera_grid.addWidget(view, n // columns, n % columns)
-        rows = math.ceil(len(views) / columns)
-        self.camera_grid.setRowStretch(rows, 1)  # kalan boşluk en altta
         for c in range(columns):
             self.camera_grid.setColumnStretch(c, 1)
 
     def eventFilter(self, obj, event) -> bool:
-        if obj is self.camera_area and event.type() == QEvent.Type.Resize:
+        if obj is self.left and event.type() == QEvent.Type.Resize:
             self._arrange_cameras()
         return False
 
@@ -224,6 +243,15 @@ class DashboardPage(QWidget):
             f"{stats.unpaid_count} ödeme bekliyor" if stats.unpaid_count else "bekleyen ödeme yok"
         )
         self.revenue.set_value(format_money(stats.revenue_today, currency), hint)
+        self._refresh_traffic()
+
+    def _refresh_traffic(self) -> None:
+        entries, exits = self.ctx.reports.hourly_traffic(datetime.now().date())
+        self.traffic_chart.set_data(
+            [f"{h:02d}" for h in range(24)],
+            [Series("Giriş", entry_color(), entries), Series("Çıkış", exit_color(), exits)],
+            tooltips=[f"{h:02d}:00 – {(h + 1) % 24:02d}:00" for h in range(24)],
+        )
 
     def _tick(self) -> None:
         now = datetime.now()

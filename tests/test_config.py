@@ -58,3 +58,22 @@ def test_cli_init_db_and_status(capsys):
     assert "Veritabanı hazır" in capsys.readouterr().out
     assert main(["status"]) == 0
     assert "İçerideki araç : 0 / 100" in capsys.readouterr().out
+
+
+def test_cli_user_backup_export(capsys, monkeypatch, tmp_path):
+    passwords = iter(["gizli1", "gizli1", "yeni22", "yeni22"])
+    monkeypatch.setattr("getpass.getpass", lambda prompt="": next(passwords))
+    assert main(["user", "add", "kasa", "--role", "operator", "--name", "Kasa 1"]) == 0
+    assert main(["user", "passwd", "kasa"]) == 0
+    assert main(["user", "list"]) == 0
+    out = capsys.readouterr().out
+    assert "kasa" in out and "admin" in out
+    assert main(["user", "delete", "yok"]) == 1
+
+    assert main(["backup"]) == 0
+    assert "Yedek alındı" in capsys.readouterr().out
+
+    target = tmp_path / "rapor.xlsx"
+    assert main(["export", str(target), "--start", "01.10.2026", "--end", "2026-10-13"]) == 0
+    assert target.is_file()
+    assert main(["export", str(tmp_path / "rapor.txt")]) == 2

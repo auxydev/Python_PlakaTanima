@@ -10,8 +10,10 @@ from plakatanima.config import AppConfig, CameraConfig, CameraRole, load_config
 from plakatanima.core.vehicle import VehicleType
 from plakatanima.db.database import Database
 from plakatanima.paths import AppPaths, default_paths
+from plakatanima.services.auth import UserService
 from plakatanima.services.parking import ParkingService
 from plakatanima.services.registry import TariffService, VehicleRegistry
+from plakatanima.services.reports import ReportService
 
 
 @dataclass
@@ -23,6 +25,8 @@ class AppContext:
     parking: ParkingService
     vehicles: VehicleRegistry
     tariffs: TariffService
+    reports: ReportService
+    users: UserService
     demo: bool = False
 
     @classmethod
@@ -44,6 +48,8 @@ class AppContext:
         config = load_config(config_path)
         db = Database(config.database.url or f"sqlite:///{paths.database_file}")
         db.create_schema()
+        users = UserService(db)
+        users.ensure_default_admin()
         if demo:
             from plakatanima.demo.seed import has_sessions, seed_demo_data
 
@@ -57,6 +63,8 @@ class AppContext:
             parking=ParkingService(db, config),
             vehicles=VehicleRegistry(db),
             tariffs=TariffService(db),
+            reports=ReportService(db),
+            users=users,
             demo=demo,
         )
 

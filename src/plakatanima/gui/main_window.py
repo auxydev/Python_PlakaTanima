@@ -7,6 +7,7 @@ from collections.abc import Callable
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QFrame,
     QHBoxLayout,
@@ -22,12 +23,15 @@ from plakatanima import APP_DISPLAY_NAME, __version__
 from plakatanima.camera.runner import CameraStatus
 from plakatanima.config import CameraRole
 from plakatanima.gui import theme
+from plakatanima.gui.auth_dialogs import ChangePasswordDialog
 from plakatanima.gui.controller import Controller
 from plakatanima.gui.pages.dashboard import DashboardPage
 from plakatanima.gui.pages.inside import InsidePage
+from plakatanima.gui.pages.reports import ReportsPage
 from plakatanima.gui.pages.sessions import SessionsPage
 from plakatanima.gui.pages.settings import SettingsPage
 from plakatanima.gui.pages.tariffs import TariffsPage
+from plakatanima.gui.pages.users import UsersPage
 from plakatanima.gui.pages.vehicles import VehiclesPage
 from plakatanima.gui.utils import chip_color, icon
 
@@ -39,6 +43,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.controller = controller
         self.ctx = controller.ctx
+        self.logout_requested = False
+        self.quit_app_on_close = False
+        self.quit_app_on_close = False
         title = APP_DISPLAY_NAME + (" — DEMO" if self.ctx.demo else "")
         self.setWindowTitle(title)
         self.setWindowIcon(icon("mdi6.car-search", theme.current().accent))
@@ -76,14 +83,19 @@ class MainWindow(QMainWindow):
             QShortcut(QKeySequence(f"Ctrl+{i}"), self, lambda k=key: self.show_page(k))
 
     def page_definitions(self) -> list[tuple[str, str, str, PageFactory]]:
-        return [
-            ("dashboard", "Gösterge Paneli", "mdi6.view-dashboard-outline", DashboardPage),
-            ("inside", "İçerideki Araçlar", "mdi6.parking", InsidePage),
-            ("sessions", "Geçiş Kayıtları", "mdi6.history", SessionsPage),
-            ("vehicles", "Araçlar", "mdi6.card-account-details-outline", VehiclesPage),
-            ("tariffs", "Tarifeler", "mdi6.cash-multiple", TariffsPage),
-            ("settings", "Ayarlar", "mdi6.cog-outline", SettingsPage),
+        """(anahtar, başlık, simge, sayfa) — operatörler yönetici sayfalarını görmez."""
+        pages = [
+            ("dashboard", "Gösterge Paneli", "mdi6.view-dashboard-outline", DashboardPage, False),
+            ("inside", "İçerideki Araçlar", "mdi6.parking", InsidePage, False),
+            ("sessions", "Geçiş Kayıtları", "mdi6.history", SessionsPage, False),
+            ("vehicles", "Araçlar", "mdi6.card-account-details-outline", VehiclesPage, False),
+            ("reports", "Raporlar", "mdi6.chart-box-outline", ReportsPage, False),
+            ("tariffs", "Tarifeler", "mdi6.cash-multiple", TariffsPage, True),
+            ("users", "Kullanıcılar", "mdi6.account-group-outline", UsersPage, True),
+            ("settings", "Ayarlar", "mdi6.cog-outline", SettingsPage, True),
         ]
+        admin = self.controller.is_admin
+        return [(k, t, i, f) for k, t, i, f, admin_only in pages if admin or not admin_only]
 
     # --------------------------------------------------------------- kenar menü
     def _build_sidebar(self) -> QWidget:
@@ -126,11 +138,55 @@ class MainWindow(QMainWindow):
         return sidebar
 
     def _footer(self) -> QWidget:
-        footer = QLabel(f"v{__version__}  ·  F2 giriş  ·  F3 çıkış")
-        footer.setObjectName("SidebarFooter")
-        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.user_label = footer
+        footer = QWidget()
+        layout = QVBoxLayout(footer)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+        user = self.controller.current_user
+        if user is not None:
+            row = QHBoxLayout()
+            avatar = QLabel()
+            avatar.setPixmap(
+                icon("mdi6.account-circle", theme.current().sidebar_text).pixmap(28, 28)
+            )
+            row.addWidget(avatar)
+            texts = QVBoxLayout()
+            texts.setSpacing(0)
+            name = QLabel(user.full_name or user.username)
+            name.setStyleSheet("color:#FFFFFF; font-weight:600;")
+            texts.addWidget(name)
+            role = QLabel(user.role.label)
+            role.setObjectName("SidebarSubtitle")
+            texts.addWidget(role)
+            row.addLayout(texts, 1)
+            layout.addLayout(row)
+            actions = QHBoxLayout()
+            for text, icon_name, slot in (
+                ("Parola", "mdi6.key-outline", self._change_password),
+                ("Çıkış yap", "mdi6.logout-variant", self.logout),
+            ):
+                btn = QPushButton(text)
+                btn.setObjectName("NavButton")
+                btn.setIcon(icon(icon_name, theme.current().sidebar_text))
+                btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn.clicked.connect(slot)
+                actions.addWidget(btn)
+            layout.addLayout(actions)
+        version = QLabel(f"v{__version__}  ·  F2 giriş  ·  F3 çıkış")
+        version.setObjectName("SidebarFooter")
+        version.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(version)
         return footer
+
+    def _change_password(self) -> None:
+        user = self.controller.current_user
+        if user is not None and ChangePasswordDialog(self.ctx.users, user, parent=self).exec():
+            self.controller.toast("Parola değiştirildi", user.username, "success")
+
+    def logout(self) -> None:
+        """Pencereyi kapatır; uygulama giriş ekranına döner."""
+        self.logout_requested = True
+        self.close()
 
     def add_page(self, key: str, label: str, icon_name: str, factory: PageFactory) -> None:
         page = factory(self.controller)
@@ -186,3 +242,5 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         self.controller.shutdown()
         super().closeEvent(event)
+        if self.quit_app_on_close:
+            QApplication.instance().quit()
