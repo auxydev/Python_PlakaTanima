@@ -9,10 +9,10 @@ Her milestone ayrı bir commit (veya commit grubu) olarak tamamlanır.
 - [x] Konsol + dönen dosya logları
 - [x] Ruff + pytest, GitHub Actions CI
 
-## M1 — Çekirdek alan modeli
-- [ ] Türk plaka formatı doğrulama ve OCR hatalarını düzeltme (O↔0, I↔1, B↔8 …)
-- [ ] Araç tipleri (otomobil, motosiklet, kamyonet/kamyon, otobüs …)
-- [ ] Tarife ve ücret hesaplama (ücretsiz süre, ilk saat, ek saat, günlük tavan)
+## M1 — Çekirdek alan modeli ✅
+- [x] Türk plaka formatı doğrulama ve OCR hatalarını düzeltme (O↔0, I↔1, B↔8 …)
+- [x] Araç tipleri (otomobil, motosiklet, hafif ticari, kamyon, otobüs)
+- [x] Tarife ve ücret hesaplama (ücretsiz süre, ilk saat, ek saat, günlük tavan)
 
 ## M2 — Veritabanı ve servis katmanı
 - [ ] SQLAlchemy 2 modelleri: araç kaydı, park oturumu, tarife, olay günlüğü, kullanıcı
