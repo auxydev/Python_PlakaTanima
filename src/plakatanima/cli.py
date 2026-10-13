@@ -27,6 +27,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     cfg = sub.add_parser("config", help="ayar dosyasını göster")
     cfg.add_argument("--show", action="store_true", help="aktif ayarları yazdır")
+
+    sub.add_parser("init-db", help="veritabanını oluştur / eksik tabloları ekle")
+    sub.add_parser("status", help="otopark doluluk ve günlük özet")
     return parser
 
 
@@ -45,6 +48,34 @@ def _cmd_config(args: argparse.Namespace, paths: AppPaths) -> int:
     return 0
 
 
+def _cmd_init_db(args: argparse.Namespace, paths: AppPaths) -> int:
+    from plakatanima.context import AppContext
+
+    ctx = AppContext.create(args.config, paths)
+    print(f"Veritabanı hazır: {ctx.db.engine.url.render_as_string(hide_password=True)}")
+    ctx.close()
+    return 0
+
+
+def _cmd_status(args: argparse.Namespace, paths: AppPaths) -> int:
+    from plakatanima.context import AppContext
+    from plakatanima.core.formatting import format_money
+
+    ctx = AppContext.create(args.config, paths)
+    stats = ctx.parking.dashboard_stats()
+    currency = ctx.config.parking.currency
+    print(f"{ctx.config.parking.lot_name}")
+    print(f"  İçerideki araç : {stats.inside} / {stats.capacity}")
+    print(f"  Bugün giriş    : {stats.entries_today}")
+    print(f"  Bugün çıkış    : {stats.exits_today}")
+    print(f"  Bugün tahsilat : {format_money(stats.revenue_today, currency)}")
+    print(f"  Ödeme bekleyen : {stats.unpaid_count}")
+    for vehicle_type, count in sorted(stats.inside_by_type.items()):
+        print(f"    {vehicle_type.label:<18}: {count}")
+    ctx.close()
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -54,6 +85,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "config":
             return _cmd_config(args, paths)
+        if args.command == "init-db":
+            return _cmd_init_db(args, paths)
+        if args.command == "status":
+            return _cmd_status(args, paths)
         parser.print_help()
         return 0
     except ConfigError as exc:

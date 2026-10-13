@@ -51,3 +51,10 @@ def test_cli_config_show(capsys):
     out = capsys.readouterr().out
     assert "[parking]" in out
     assert "capacity = 100" in out
+
+
+def test_cli_init_db_and_status(capsys):
+    assert main(["init-db"]) == 0
+    assert "Veritabanı hazır" in capsys.readouterr().out
+    assert main(["status"]) == 0
+    assert "İçerideki araç : 0 / 100" in capsys.readouterr().out

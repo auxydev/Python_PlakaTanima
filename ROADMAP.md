@@ -14,10 +14,12 @@ Her milestone ayrı bir commit (veya commit grubu) olarak tamamlanır.
 - [x] Araç tipleri (otomobil, motosiklet, hafif ticari, kamyon, otobüs)
 - [x] Tarife ve ücret hesaplama (ücretsiz süre, ilk saat, ek saat, günlük tavan)
 
-## M2 — Veritabanı ve servis katmanı
-- [ ] SQLAlchemy 2 modelleri: araç kaydı, park oturumu, tarife, olay günlüğü, kullanıcı
-- [ ] Giriş/çıkış iş kuralları: tekrar okuma koruması, abone, kara liste, doluluk
-- [ ] İstatistikler (içerideki araç, günlük giriş/çıkış, gelir, tip dağılımı)
+## M2 — Veritabanı ve servis katmanı ✅
+- [x] SQLAlchemy 2 modelleri: araç kaydı, park oturumu, tarife, olay günlüğü, kullanıcı
+- [x] Giriş/çıkış iş kuralları: tekrar okuma koruması, abone, kara liste, doluluk
+- [x] Tek kamerayla giriş+çıkış, çıkışı okunamayan araçların otomatik kapatılması
+- [x] İstatistikler (içerideki araç, günlük giriş/çıkış, tahsilat, tip dağılımı)
+- [x] `plakatanima init-db`, `plakatanima status`
 
 ## M3 — Tanıma motoru
 - [ ] Araç tespiti + sınıflandırma (YOLOX ONNX; opsiyonel Ultralytics YOLO)
