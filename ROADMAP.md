@@ -21,11 +21,11 @@ Her milestone ayrı bir commit (veya commit grubu) olarak tamamlanır.
 - [x] İstatistikler (içerideki araç, günlük giriş/çıkış, tahsilat, tip dağılımı)
 - [x] `plakatanima init-db`, `plakatanima status`
 
-## M3 — Tanıma motoru
-- [ ] Araç tespiti + sınıflandırma (YOLOX ONNX; opsiyonel Ultralytics YOLO)
-- [ ] Plaka tespiti + OCR (fast-alpr, ONNX)
-- [ ] Plakayı araca eşleme, çoklu kare oylama ve tekrar engelleme
-- [ ] `plakatanima recognize` ile resim/video üzerinde deneme
+## M3 — Tanıma motoru ✅
+- [x] Araç tespiti + sınıflandırma (YOLOX ONNX, SHA-256 doğrulamalı indirme; opsiyonel Ultralytics YOLO)
+- [x] Plaka tespiti + OCR (fast-alpr, ONNX); OCR'ın ülke tahmini ile yabancı plakaların ayrılması
+- [x] Plakayı araca eşleme, çoklu kare oylama ve tekrar engelleme
+- [x] `plakatanima recognize` ile resim/video üzerinde deneme
 
 ## M4 — Kamera ve demo altyapısı
 - [ ] Webcam / RTSP / video dosyası kaynakları, otomatik yeniden bağlanma

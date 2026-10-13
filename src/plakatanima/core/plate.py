@@ -104,11 +104,17 @@ def _convert(segment: str, *, digits: bool, allow: bool) -> tuple[str, int] | No
     return "".join(out), cost
 
 
-def parse_plate(raw: str, *, allow_corrections: bool = True) -> ParsedPlate | None:
+def parse_plate(
+    raw: str,
+    *,
+    allow_corrections: bool = True,
+    max_corrections: int | None = None,
+) -> ParsedPlate | None:
     """Metni Türk plakası olarak ayrıştırır; uymuyorsa ``None`` döner.
 
     ``allow_corrections`` açıkken OCR karışıklıkları en az değişiklikle düzeltilir;
-    birden çok olası okuma varsa en az düzeltme gerektiren seçilir.
+    birden çok olası okuma varsa en az düzeltme gerektiren seçilir. ``max_corrections``
+    verilirse daha fazla düzeltme gerektiren okumalar reddedilir.
     """
     text = clean_text(raw)
     if not MIN_PLATE_LENGTH <= len(text) <= MAX_PLATE_LENGTH:
@@ -133,6 +139,8 @@ def parse_plate(raw: str, *, allow_corrections: bool = True) -> ParsedPlate | No
             digits=digits[0],
             corrections=province[1] + letters[1] + digits[1],
         )
+        if max_corrections is not None and candidate.corrections > max_corrections:
+            continue
         if best is None or candidate.corrections < best.corrections:
             best = candidate
     return best
@@ -143,13 +151,19 @@ def is_valid_turkish_plate(raw: str) -> bool:
     return parse_plate(raw, allow_corrections=False) is not None
 
 
-def normalize_plate(raw: str, *, turkish_only: bool = True) -> str | None:
+def normalize_plate(
+    raw: str,
+    *,
+    turkish_only: bool = True,
+    allow_corrections: bool = True,
+    max_corrections: int | None = 2,
+) -> str | None:
     """Plakayı saklama biçimine (``34ABC123``) getirir.
 
     Türk formatına uymayan metinler ``turkish_only`` kapalıysa makul uzunluktaysa
     temizlenmiş haliyle kabul edilir (yabancı plakalar), aksi halde ``None`` döner.
     """
-    parsed = parse_plate(raw)
+    parsed = parse_plate(raw, allow_corrections=allow_corrections, max_corrections=max_corrections)
     if parsed is not None:
         return parsed.text
     if turkish_only:
