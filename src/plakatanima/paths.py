@@ -47,6 +47,11 @@ class AppPaths:
     def backups_dir(self) -> Path:
         return self.data_dir / "backups"
 
+    def demo(self) -> AppPaths:
+        """Demo modu için ayrı ayar/veritabanı dizini (gerçek kayıtlara dokunmaz)."""
+        root = self.data_dir / "demo"
+        return AppPaths(config_dir=root, data_dir=root)
+
     def ensure(self) -> AppPaths:
         for path in (
             self.config_dir,

@@ -91,6 +91,10 @@ class RecognitionPipeline:
         analysis.elapsed_ms = (time.perf_counter() - started) * 1000
         return analysis
 
+    def analyze_frame(self, frame, roi: Roi | None = None) -> FrameAnalysis:
+        """Kamera karesi (``image`` alanı olan nesne) için :meth:`analyze`."""
+        return self.analyze(frame.image, roi)
+
 
 _ASCII = str.maketrans("ÇĞİÖŞÜçğıöşü", "CGIOSUcgiosu")
 

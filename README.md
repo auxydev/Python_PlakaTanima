@@ -23,7 +23,23 @@ plakatanima config --show                    # aktif ayarları ve dosya yolları
 plakatanima status                           # doluluk ve günlük özet
 plakatanima recognize araba.jpg -o sonuc.jpg # resimde araç + plaka tanıma
 plakatanima recognize giris.mp4              # videodaki plakaları listeler
+plakatanima run                              # kameraları arayüzsüz çalıştırır
+plakatanima run --demo                       # kamera/model olmadan simülasyon
 ```
+
+Kamera kaynağı ayar dosyasında (`plakatanima config` yolu gösterir) tanımlanır:
+
+```toml
+[[cameras]]
+name = "Giriş Kamerası"
+source = "rtsp://kullanici:sifre@192.168.1.20:554/stream1"  # veya "0" (webcam), "video.mp4", "demo"
+role = "giris"            # giris | cikis | giris_cikis (tek kamera ile ikisi birden)
+process_fps = 4.0
+roi = [0.0, 0.3, 1.0, 1.0] # isteğe bağlı: yalnızca karenin alt %70'i işlenir
+```
+
+Demo modu gerçek kayıtlardan ayrı bir veritabanı kullanır ve son 3 haftalık örnek
+verilerle başlar.
 
 Modeller ilk kullanımda otomatik indirilir:
 

@@ -27,10 +27,12 @@ Her milestone ayrı bir commit (veya commit grubu) olarak tamamlanır.
 - [x] Plakayı araca eşleme, çoklu kare oylama ve tekrar engelleme
 - [x] `plakatanima recognize` ile resim/video üzerinde deneme
 
-## M4 — Kamera ve demo altyapısı
-- [ ] Webcam / RTSP / video dosyası kaynakları, otomatik yeniden bağlanma
-- [ ] Kamera başına arka plan işleme döngüsü
-- [ ] Kamera ve model olmadan denemek için demo (simülasyon) modu
+## M4 — Kamera ve demo altyapısı ✅
+- [x] Webcam / RTSP / video dosyası kaynakları, otomatik yeniden bağlanma
+- [x] Kamera başına yakalama + analiz iş parçacıkları (IP kamerada gecikme birikmez)
+- [x] Onaylanan geçişlerin anlık görüntüsü, saklama süresi dolanların temizliği
+- [x] Kamera ve model olmadan denemek için demo (simülasyon) modu, örnek geçmiş veri
+- [x] `plakatanima run` ile arayüzsüz (sunucu) çalışma
 
 ## M5 — Masaüstü arayüz (PySide6)
 - [ ] Koyu/açık tema, kenar menülü ana pencere

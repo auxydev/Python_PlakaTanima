@@ -33,6 +33,10 @@ def _build_parser() -> argparse.ArgumentParser:
     sub.add_parser("init-db", help="veritabanını oluştur / eksik tabloları ekle")
     sub.add_parser("status", help="otopark doluluk ve günlük özet")
 
+    run = sub.add_parser("run", help="kameraları arayüz olmadan çalıştır (sunucu modu)")
+    run.add_argument("--demo", action="store_true", help="kamera/model olmadan simülasyon")
+    run.add_argument("--duration", type=float, help="belirtilen saniye sonra dur")
+
     rec = sub.add_parser("recognize", help="resim/video üzerinde plaka ve araç tanıma")
     rec.add_argument("input", type=Path, help="resim veya video dosyası")
     rec.add_argument("-o", "--output", type=Path, help="işaretlenmiş resim/video çıktısı")
@@ -93,6 +97,49 @@ def _cmd_status(args: argparse.Namespace, paths: AppPaths) -> int:
     for vehicle_type, count in sorted(stats.inside_by_type.items()):
         print(f"    {vehicle_type.label:<18}: {count}")
     ctx.close()
+    return 0
+
+
+def _cmd_run(args: argparse.Namespace, paths: AppPaths) -> int:
+    import threading
+
+    from plakatanima.camera.manager import CameraManager
+    from plakatanima.camera.runner import CameraCallbacks
+    from plakatanima.context import AppContext
+
+    ctx = AppContext.create(args.config, paths, demo=args.demo)
+    if not any(c.enabled for c in ctx.config.cameras):
+        print("Etkin kamera yok. Ayar dosyasına kamera ekleyin:", ctx.config_path, file=sys.stderr)
+        return 1
+    lock = threading.Lock()
+
+    def on_plate(_index, observation, _confirmed):
+        with lock:  # kameralar aynı anda okursa kayıtlar sırayla işlensin
+            result = ctx.parking.process(observation)
+        flag = " [!]" if result.is_alert else ""
+        print(f"{result.timestamp:%H:%M:%S} [{result.camera_name}] {result.message}{flag}")
+
+    def on_status(index, status, message):
+        name = ctx.config.cameras[index].name
+        print(f"[{name}] {status.label}{': ' + message if message else ''}")
+
+    manager = CameraManager(
+        ctx.config,
+        ctx.paths,
+        CameraCallbacks(on_plate=on_plate, on_status=on_status),
+        inside_vehicles=ctx.inside_vehicles,
+        registered_vehicles=ctx.registered_vehicles,
+    )
+    stop = threading.Event()
+    manager.start()
+    print("Çalışıyor. Durdurmak için Ctrl+C.")
+    try:
+        stop.wait(args.duration)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        manager.stop()
+        ctx.close()
     return 0
 
 
@@ -187,6 +234,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_status(args, paths)
         if args.command == "recognize":
             return _cmd_recognize(args, paths)
+        if args.command == "run":
+            return _cmd_run(args, paths)
         parser.print_help()
         return 0
     except ConfigError as exc:
