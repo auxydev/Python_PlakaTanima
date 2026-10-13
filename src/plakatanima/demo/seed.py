@@ -77,6 +77,7 @@ def seed_demo_data(
         s.flush()
 
         open_plates: set[str] = set()
+        unpaid_after = now - timedelta(days=2)
         for day_offset in range(days, -1, -1):
             day = now.date() - timedelta(days=day_offset)
             weekend = day.weekday() >= 5
@@ -117,7 +118,7 @@ def seed_demo_data(
                 if still_inside:
                     open_plates.add(plate)
                 else:
-                    _close(session, vehicle, exit_, tariffs, vtype, rng)
+                    _close(session, vehicle, exit_, tariffs, vtype, rng, unpaid_after)
                 s.add(session)
                 s.flush()
                 count += 1
@@ -127,7 +128,7 @@ def seed_demo_data(
     return count
 
 
-def _close(session, vehicle, exit_, tariffs, vtype, rng) -> None:
+def _close(session, vehicle, exit_, tariffs, vtype, rng, unpaid_after: datetime) -> None:
     session.status = SessionStatus.CLOSED
     session.exit_time = exit_
     session.exit_camera = _EXIT_CAMERA
@@ -140,8 +141,8 @@ def _close(session, vehicle, exit_, tariffs, vtype, rng) -> None:
         session.fee = rule.fee_between(session.entry_time, exit_)
         if session.fee == 0:
             session.payment_method = PaymentMethod.FREE
-        elif rng.random() < 0.03:
-            return  # ödenmemiş
+        elif exit_ >= unpaid_after and rng.random() < 0.05:
+            return  # ödenmemiş (yalnızca son günlerde, bekleyen ödeme listesi şişmesin)
         else:
             session.payment_method = rng.choices((PaymentMethod.CARD, PaymentMethod.CASH), (7, 3))[
                 0

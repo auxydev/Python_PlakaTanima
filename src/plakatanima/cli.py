@@ -3,6 +3,7 @@
 Örnekler::
 
     plakatanima                          # masaüstü arayüzünü açar
+    plakatanima gui --demo               # kamera olmadan demo
     plakatanima config --show            # aktif ayarları yazdırır
     plakatanima recognize araba.jpg -o sonuc.jpg
     plakatanima recognize giris.mp4      # videodaki plakaları listeler
@@ -32,6 +33,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("init-db", help="veritabanını oluştur / eksik tabloları ekle")
     sub.add_parser("status", help="otopark doluluk ve günlük özet")
+
+    gui = sub.add_parser("gui", help="masaüstü arayüzünü aç (varsayılan)")
+    gui.add_argument("--demo", action="store_true", help="kamera/model olmadan simülasyon")
 
     run = sub.add_parser("run", help="kameraları arayüz olmadan çalıştır (sunucu modu)")
     run.add_argument("--demo", action="store_true", help="kamera/model olmadan simülasyon")
@@ -98,6 +102,12 @@ def _cmd_status(args: argparse.Namespace, paths: AppPaths) -> int:
         print(f"    {vehicle_type.label:<18}: {count}")
     ctx.close()
     return 0
+
+
+def _cmd_gui(args: argparse.Namespace, paths: AppPaths) -> int:
+    from plakatanima.gui.app import run_gui
+
+    return run_gui(args.config, paths, demo=getattr(args, "demo", False))
 
 
 def _cmd_run(args: argparse.Namespace, paths: AppPaths) -> int:
@@ -236,8 +246,7 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_recognize(args, paths)
         if args.command == "run":
             return _cmd_run(args, paths)
-        parser.print_help()
-        return 0
+        return _cmd_gui(args, paths)
     except ConfigError as exc:
         print(exc, file=sys.stderr)
         return 2

@@ -34,11 +34,12 @@ Her milestone ayrı bir commit (veya commit grubu) olarak tamamlanır.
 - [x] Kamera ve model olmadan denemek için demo (simülasyon) modu, örnek geçmiş veri
 - [x] `plakatanima run` ile arayüzsüz (sunucu) çalışma
 
-## M5 — Masaüstü arayüz (PySide6)
-- [ ] Koyu/açık tema, kenar menülü ana pencere
-- [ ] Gösterge paneli: canlı kameralar, son geçişler, doluluk kartları
-- [ ] Araçlar (abone / kara liste), park kayıtları, tarifeler, ayarlar sayfaları
-- [ ] Manuel giriş/çıkış, ödeme alma, kara liste alarmı
+## M5 — Masaüstü arayüz (PySide6) ✅
+- [x] Koyu/açık tema, kenar menülü ana pencere, Türkçe yerel ayar, kısayollar (F2/F3, Ctrl+1..6)
+- [x] Gösterge paneli: canlı kameralar (tespit kutuları), son geçişler, doluluk ve günlük kartlar
+- [x] İçerideki araçlar (anlık süre/ücret), geçiş kayıtları (filtreli), araçlar, tarifeler, ayarlar
+- [x] Manuel giriş/çıkış, ödeme alma (indirim), geçiş detayı (giriş/çıkış fotoğrafları), kara liste alarmı
+- [x] Kamera bağlantı testi, ayarlar değişince kameraların yeniden başlatılması
 
 ## M6 — Raporlama ve yönetim
 - [ ] Grafikli raporlar (saatlik yoğunluk, araç tipi dağılımı, gelir)

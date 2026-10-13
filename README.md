@@ -19,6 +19,8 @@ pip install -e ".[dev]"
 ## Kullanım
 
 ```bash
+plakatanima                                  # masaüstü uygulamasını açar
+plakatanima gui --demo                       # kamera/model olmadan demo (önerilen ilk deneme)
 plakatanima config --show                    # aktif ayarları ve dosya yollarını gösterir
 plakatanima status                           # doluluk ve günlük özet
 plakatanima recognize araba.jpg -o sonuc.jpg # resimde araç + plaka tanıma
@@ -40,6 +42,19 @@ roi = [0.0, 0.3, 1.0, 1.0] # isteğe bağlı: yalnızca karenin alt %70'i işlen
 
 Demo modu gerçek kayıtlardan ayrı bir veritabanı kullanır ve son 3 haftalık örnek
 verilerle başlar.
+
+### Arayüz
+
+| Sayfa | İçerik |
+|---|---|
+| Gösterge Paneli | Canlı kameralar (araç/plaka kutuları), doluluk, bugünkü giriş/çıkış/tahsilat, son geçişler |
+| İçerideki Araçlar | Otoparktaki araçlar, kalış süresi ve biriken ücret, tek tıkla çıkış |
+| Geçiş Kayıtları | Tarih/plaka/tip/durum filtreleri, ödeme alma, giriş-çıkış fotoğrafları |
+| Araçlar | Abone ve kara liste kayıtları, sahip bilgileri |
+| Tarifeler | Araç tipine göre ücretlendirme ve ücret hesaplayıcı |
+| Ayarlar | Otopark, kameralar (bağlantı testi), tanıma modelleri ve eşikler |
+
+Kısayollar: **F2** manuel giriş, **F3** manuel çıkış, **Ctrl+1…6** sayfalar.
 
 Modeller ilk kullanımda otomatik indirilir:
 

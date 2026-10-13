@@ -128,6 +128,8 @@ class ParkingService:
     def process(self, obs: PlateObservation) -> ParkingResult:
         now = (obs.timestamp or self._clock()).replace(microsecond=0)
         plate = clean_text(obs.plate)
+        obs.vehicle_type = VehicleType.parse(obs.vehicle_type)
+        obs.role = CameraRole(obs.role)
         if not plate:
             raise ValueError("Plaka boş olamaz")
 
@@ -424,7 +426,7 @@ class ParkingService:
             session = s.get(ParkingSession, session_id)
             if session is None:
                 raise LookupError(f"Kayıt bulunamadı: {session_id}")
-            session.vehicle_type = vehicle_type
+            session.vehicle_type = VehicleType.parse(vehicle_type)
 
     def delete_session(self, session_id: int) -> None:
         with self._db.session() as s:
@@ -474,6 +476,15 @@ class ParkingService:
         stmt = stmt.order_by(ParkingSession.entry_time.desc()).limit(limit)
         with self._db.session() as s:
             return list(s.scalars(stmt))
+
+    def get_session(self, session_id: int) -> ParkingSession | None:
+        with self._db.session() as s:
+            stmt = (
+                select(ParkingSession)
+                .options(selectinload(ParkingSession.vehicle))
+                .where(ParkingSession.id == session_id)
+            )
+            return s.scalar(stmt)
 
     def recent_events(self, limit: int = 50) -> list[DetectionEvent]:
         with self._db.session() as s:

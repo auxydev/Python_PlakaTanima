@@ -87,6 +87,7 @@ class VehicleRegistry:
             for f in fields(VehicleData):
                 setattr(vehicle, f.name, getattr(data, f.name))
             vehicle.plate = plate
+            vehicle.vehicle_type = VehicleType.parse(data.vehicle_type)
             if not vehicle.is_blacklisted:
                 vehicle.blacklist_reason = ""
             s.flush()
