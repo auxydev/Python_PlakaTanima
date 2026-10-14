@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Uygulama verileri (taşınabilir mod / yerel denemeler)
+/data/
+*.db
+*.sqlite3
+*.onnx
+*.pt
+/config.toml
+/captures/
+/logs/
+
+# Editörler
+.idea/
+.vscode/
+*.swp
+.DS_Store
